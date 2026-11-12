@@ -2,6 +2,7 @@ import os
 import uuid
 import base64
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -15,6 +16,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# ব্রাউজার ও ওয়েবসাইট (Vercel/HTML) থেকে রিকোয়েস্ট এলাউ করার জন্য CORS সেটআপ
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 AUDIO_DIR = "/tmp/audio_files"
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
@@ -24,7 +34,7 @@ class NewsRequest(BaseModel):
 
 @app.get("/")
 def health_check():
-    return {"status": "online", "message": "গুরুদেবের নিউজ ও অডিও এপিআই সার্ভার সচল আছে!"}
+    return {"status": "online", "message": "নিউজ ও অডিও এপিআই সার্ভার সচল আছে!"}
 
 @app.post("/generate-news")
 async def generate_news_endpoint(req: NewsRequest):
@@ -42,7 +52,7 @@ async def generate_news_endpoint(req: NewsRequest):
         audio_path = os.path.join(AUDIO_DIR, file_id)
         await create_deep_voice_audio(editorial["tts_audio_script"], audio_path)
 
-        # টেলিগ্রাম বটে সহজে পাঠানোর জন্য অডিওটিকে Base64 এবং ডাউনলোড পাথ দুভাবেই দেওয়া হলো
+        # Base64 এনকোডিং
         with open(audio_path, "rb") as f:
             audio_base64 = base64.b64encode(f.read()).decode("utf-8")
 
@@ -66,4 +76,3 @@ def download_audio(filename: str):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="অডিও ফাইলটি পাওয়া যায়নি।")
     return FileResponse(file_path, media_type="audio/mpeg", filename=filename)
-  
